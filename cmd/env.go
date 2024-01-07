@@ -17,6 +17,11 @@ type Config struct {
 		ApiKey         string `env:"GOOGLE_SEARCH_API_KEY,required"`
 		SearchEngineId string `env:"GOOGLE_SEARCH_SEARCH_ENGINE_ID,required"`
 	}
+	Function struct {
+		GoogleSearch struct {
+			MockResponse string `env:"FUNCTION_GOOGLE_SEARCH_MOCK_RESPONSE"`
+		}
+	}
 }
 
 func LoadConfig(_ context.Context) Config {

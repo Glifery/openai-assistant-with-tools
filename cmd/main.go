@@ -22,6 +22,7 @@ func main() {
 	googleSearch := google_search.NewGoogleSearchFunction(ctx, google_search.GoogleSearchConfig{
 		ApiKey:         cfg.GoogleSearch.ApiKey,
 		SearchEngineID: cfg.GoogleSearch.SearchEngineId,
+		MockResponse:   cfg.Function.GoogleSearch.MockResponse,
 	})
 	googleSearch = googleSearch
 

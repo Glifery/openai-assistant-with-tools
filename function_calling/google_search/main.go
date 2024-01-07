@@ -11,6 +11,7 @@ import (
 type GoogleSearchConfig struct {
 	ApiKey         string
 	SearchEngineID string
+	MockResponse   string
 }
 
 type GoogleSearchRequest struct {
@@ -63,6 +64,10 @@ func (srv *googleSearchFunction) GetFunctionRequiredProperties() []string {
 }
 
 func (srv *googleSearchFunction) Execute(input string) (output any, err error) {
+	if srv.config.MockResponse != "" {
+		return srv.config.MockResponse, nil
+	}
+
 	var request GoogleSearchRequest
 	err = json.Unmarshal([]byte(input), &request)
 	if err != nil {
