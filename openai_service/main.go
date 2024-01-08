@@ -3,8 +3,8 @@ package openai_service
 import (
 	"context"
 	"fmt"
+	"github.com/glifery/openai-assistant-with-tools/types"
 	"github.com/sashabaranov/go-openai"
-	"google_search_api/types"
 	"time"
 )
 
@@ -142,32 +142,50 @@ func (a *assistantService) GetRunResponse(ctx context.Context, runInput *openai.
 			return openai.MessagesList{}, err
 		}
 
+		fmt.Printf("Run status: %s\n", run.Status)
+
 		if run.Status == "requires_action" {
-			toolCallId := run.RequiredAction.SubmitToolOutputs.ToolCalls[0].ID
-			name := run.RequiredAction.SubmitToolOutputs.ToolCalls[0].Function.Name
-			argumentsString := run.RequiredAction.SubmitToolOutputs.ToolCalls[0].Function.Arguments
-
-			for _, function := range a.functions {
-				if function.GetFunctionName() != name {
-					continue
-				}
-
-				output, err := function.Execute(argumentsString)
+			toolOutputs := []openai.ToolOutput{}
+			for _, toolCall := range run.RequiredAction.SubmitToolOutputs.ToolCalls {
+				toolOutput, err := a.makeToolCall(toolCall)
 				if err != nil {
 					return openai.MessagesList{}, err
 				}
-				run, err = a.client.SubmitToolOutputs(ctx, a.thread.ID, run.ID, openai.SubmitToolOutputsRequest{
-					ToolOutputs: []openai.ToolOutput{
-						{
-							ToolCallID: toolCallId,
-							Output:     output,
-						},
-					},
-				})
-				if err != nil {
-					return openai.MessagesList{}, err
-				}
+				toolOutputs = append(toolOutputs, *toolOutput)
 			}
+
+			run, err = a.client.SubmitToolOutputs(ctx, a.thread.ID, run.ID, openai.SubmitToolOutputsRequest{
+				ToolOutputs: toolOutputs,
+			})
+			if err != nil {
+				return openai.MessagesList{}, err
+			}
+
+			//toolCallId := run.RequiredAction.SubmitToolOutputs.ToolCalls[0].ID
+			//name := run.RequiredAction.SubmitToolOutputs.ToolCalls[0].Function.Name
+			//argumentsString := run.RequiredAction.SubmitToolOutputs.ToolCalls[0].Function.Arguments
+			//
+			//for _, function := range a.functions {
+			//	if function.GetFunctionName() != name {
+			//		continue
+			//	}
+			//
+			//	output, err := function.Execute(argumentsString)
+			//	if err != nil {
+			//		return openai.MessagesList{}, err
+			//	}
+			//	run, err = a.client.SubmitToolOutputs(ctx, a.thread.ID, run.ID, openai.SubmitToolOutputsRequest{
+			//		ToolOutputs: []openai.ToolOutput{
+			//			{
+			//				ToolCallID: toolCallId,
+			//				Output:     output,
+			//			},
+			//		},
+			//	})
+			//	if err != nil {
+			//		return openai.MessagesList{}, err
+			//	}
+			//}
 		}
 
 		if run.Status == "completed" {
@@ -181,4 +199,37 @@ func (a *assistantService) GetRunResponse(ctx context.Context, runInput *openai.
 	messages, err = a.client.ListMessage(ctx, a.thread.ID, nil, &order, nil, nil)
 
 	return
+}
+
+func (a *assistantService) makeToolCall(toolCall openai.ToolCall) (toolOutput *openai.ToolOutput, err error) {
+	toolCallId := toolCall.ID
+	name := toolCall.Function.Name
+	argumentsString := toolCall.Function.Arguments
+
+	fmt.Printf("  tool required: %s (%s)\n", name, argumentsString)
+
+	function, err := a.findFunction(name)
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := (*function).Execute(argumentsString)
+	if err != nil {
+		return nil, err
+	}
+
+	return &openai.ToolOutput{
+		ToolCallID: toolCallId,
+		Output:     output,
+	}, nil
+}
+
+func (a *assistantService) findFunction(name string) (functionCalling *types.FunctionCalling, err error) {
+	for _, function := range a.functions {
+		if function.GetFunctionName() == name {
+			return &function, nil
+		}
+	}
+
+	return nil, fmt.Errorf("function with name %s not found", name)
 }

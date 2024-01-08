@@ -3,6 +3,7 @@ package google_search
 import (
 	"context"
 	"encoding/json"
+	"github.com/glifery/openai-assistant-with-tools/types"
 	"google.golang.org/api/customsearch/v1"
 	"google.golang.org/api/option"
 	"strings"
@@ -30,7 +31,7 @@ type googleSearchFunction struct {
 	service *customsearch.Service
 }
 
-func NewGoogleSearchFunction(ctx context.Context, config GoogleSearchConfig) *googleSearchFunction {
+func NewGoogleSearchFunction(ctx context.Context, config GoogleSearchConfig) types.FunctionCalling {
 	service, err := customsearch.NewService(ctx, option.WithAPIKey(config.ApiKey))
 	if err != nil {
 		panic(err)

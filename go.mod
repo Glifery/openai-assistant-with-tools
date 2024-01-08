@@ -1,4 +1,4 @@
-module google_search_api
+module github.com/glifery/openai-assistant-with-tools
 
 go 1.21
 
